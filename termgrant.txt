@@ -1,0 +1,55 @@
+-- Step 1: Create the database and table
+CREATE DATABASE IF NOT EXISTS college;
+USE college;
+
+CREATE TABLE stud (
+  roll INT PRIMARY KEY,
+  att DECIMAL(5,2),
+  status VARCHAR(5)
+);
+
+-- Step 2: Insert sample data
+INSERT INTO stud VALUES 
+(1, 82, NULL),
+(2, 55, NULL),
+(3, 76, NULL),
+(4, 74, NULL);
+
+
+DELIMITER $$
+
+CREATE PROCEDURE CheckAttendance(IN p_roll INT)
+BEGIN
+  DECLARE v_att DECIMAL(5,2);
+  DECLARE not_found CONDITION FOR SQLSTATE '02000';
+
+  -- Exception handler if record not found
+  DECLARE EXIT HANDLER FOR not_found
+  BEGIN
+    SELECT 'Error: Roll number not found!' AS Message;
+  END;
+
+  -- Fetch attendance for entered roll
+  SELECT att INTO v_att 
+  FROM stud 
+  WHERE roll = p_roll;
+
+  -- Control structure
+  IF v_att < 75 THEN
+    UPDATE stud SET status = 'D' WHERE roll = p_roll;
+    SELECT CONCAT('Roll No ', p_roll, ': Term not granted') AS Result;
+  ELSE
+    UPDATE stud SET status = 'ND' WHERE roll = p_roll;
+    SELECT CONCAT('Roll No ', p_roll, ': Term granted') AS Result;
+  END IF;
+
+END$$
+
+DELIMITER ;
+
+
+CALL CheckAttendance(2);
+CALL CheckAttendance(3);
+CALL CheckAttendance(5);   -- For invalid roll (exception test)
+
+SELECT * FROM stud;

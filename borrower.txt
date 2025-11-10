@@ -1,0 +1,86 @@
+CREATE DATABASE LibraryDB;
+USE LibraryDB;
+
+-- Borrower Table
+CREATE TABLE Borrower (
+  Roll_no INT PRIMARY KEY,
+  Name VARCHAR(50),
+  DateOfIssue DATE,
+  NameOfBook VARCHAR(100),
+  Status CHAR(1)
+);
+
+-- Fine Table
+CREATE TABLE Fine (
+  Roll_no INT,
+  Date DATE,
+  Amt DECIMAL(10,2),
+  FOREIGN KEY (Roll_no) REFERENCES Borrower(Roll_no)
+);
+INSERT INTO Borrower VALUES
+(1, 'Tanishk', '2025-10-01', 'C++ Programming', 'I'),
+(2, 'Amit', '2025-09-20', 'DBMS Concepts', 'I'),
+(3, 'Riya', '2025-10-25', 'Operating Systems', 'I');
+
+DELIMITER $$
+
+CREATE PROCEDURE ReturnBook(
+    IN p_roll INT,
+    IN p_book VARCHAR(100)
+)
+BEGIN
+    DECLARE v_date_issue DATE;
+    DECLARE v_days INT;
+    DECLARE v_fine DECIMAL(10,2) DEFAULT 0;
+    DECLARE v_not_found CONDITION FOR SQLSTATE '02000';
+
+    -- Exception handler for missing borrower
+    DECLARE EXIT HANDLER FOR v_not_found
+    BEGIN
+        SELECT 'No such record found for given Roll No or Book Name!' AS Message;
+    END;
+
+    -- Get Date of Issue
+    SELECT DateOfIssue INTO v_date_issue
+    FROM Borrower
+    WHERE Roll_no = p_roll AND NameOfBook = p_book;
+
+    -- Calculate number of days since issue
+    SET v_days = DATEDIFF(CURDATE(), v_date_issue);
+
+    -- Fine Calculation using Control Structures
+    IF v_days <= 14 THEN
+        SET v_fine = 0;
+    ELSEIF v_days BETWEEN 15 AND 30 THEN
+        SET v_fine = v_days * 5;
+    ELSE
+        SET v_fine = v_days * 50;
+    END IF;
+
+    -- Update Status from 'I' to 'R'
+    UPDATE Borrower
+    SET Status = 'R'
+    WHERE Roll_no = p_roll AND NameOfBook = p_book;
+
+    -- If fine exists, insert into Fine table
+    IF v_fine > 0 THEN
+        INSERT INTO Fine (Roll_no, Date, Amt)
+        VALUES (p_roll, CURDATE(), v_fine);
+    END IF;
+
+    -- Display output message
+    SELECT CONCAT('Book "', p_book, '" returned by Roll No ', p_roll,
+           '. Days: ', v_days, ', Fine: Rs ', v_fine) AS Result;
+
+END$$
+
+DELIMITER ;
+
+
+CALL ReturnBook(1, 'C++ Programming');
+CALL ReturnBook(2, 'DBMS Concepts');
+CALL ReturnBook(3, 'Operating Systems');
+
+
+SELECT * FROM Borrower;
+SELECT * FROM Fine;
